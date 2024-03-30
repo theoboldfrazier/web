@@ -35,6 +35,7 @@ import { useQuoteEstimatedFeesQuery } from 'react-queries/hooks/useQuoteEstimate
 import { selectInboundAddressData } from 'react-queries/selectors'
 import { useHistory } from 'react-router'
 import { Amount } from 'components/Amount/Amount'
+import { AssetIcon } from 'components/AssetIcon'
 import { AssetInput } from 'components/DeFi/components/AssetInput'
 import { SlippagePopover } from 'components/MultiHopTrade/components/SlippagePopover'
 import { Row } from 'components/Row/Row'
@@ -124,6 +125,8 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
   const [runeAccountId, setRuneAccountId] = useState<AccountId | undefined>()
   const [percentageSelection, setPercentageSelection] = useState<number>(INITIAL_REMOVAL_PERCENTAGE)
   const [sliderValue, setSliderValue] = useState<number>(INITIAL_REMOVAL_PERCENTAGE)
+  const [runeRemovalPercentage, setRuneRemovalPercentage] = useState<number>(50)
+  const [runePercentageSelection, setRunePercentageSelection] = useState<number>(50)
   const [shareOfPoolDecimalPercent, setShareOfPoolDecimalPercent] = useState<string | undefined>()
   const [poolAssetAccountAddress, setPoolAssetAccountAddress] = useState<string | undefined>(
     undefined,
@@ -133,6 +136,25 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
     () => fromOpportunityId(opportunityId),
     [opportunityId],
   )
+
+  useEffect(() => {
+    switch (opportunityType) {
+      case 'sym':
+        setRuneRemovalPercentage(50)
+        setRunePercentageSelection(50)
+        return
+      case AsymSide.Asset:
+        setRuneRemovalPercentage(0)
+        setRunePercentageSelection(0)
+        return
+      case AsymSide.Rune:
+        setRuneRemovalPercentage(100)
+        setRunePercentageSelection(100)
+        return
+      default:
+        assertUnreachable(opportunityType)
+    }
+  }, [opportunityType])
 
   // Virtual as in, these are the amounts if removing symetrically. But a user may remove asymetrically, so these are not the *actual* amounts
   // Keeping these as virtual amounts is useful from a UI perspective, as it allows rebalancing to automagically work when switching from sym. type,
@@ -210,68 +232,32 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
   }, [accountId, poolAsset, runeAccountId])
 
   const actualAssetWithdrawAmountCryptoPrecision = useMemo(() => {
-    switch (opportunityType) {
-      // Symmetrical: assetAmount = virtual amount (no deposit rebalance, so use current asset value as is)
-      case 'sym':
-        return virtualAssetWithdrawAmountCryptoPrecision
-      // Asym Asset: assetAmount = virtual amount times 2 (deposit 50:50 rebalance asset->rune, so current rune value will be swapped into asset before withdrawal)
-      case AsymSide.Asset:
-        return bnOrZero(virtualAssetWithdrawAmountCryptoPrecision).times(2).toFixed()
-      // Asym Rune: assetAmount = '0' (deposit 50:50 rebalance rune -> asset, so current asset value will be swapped into rune before withdrawal)
-      case AsymSide.Rune:
-        return '0'
-      default:
-        assertUnreachable(opportunityType)
-    }
-  }, [opportunityType, virtualAssetWithdrawAmountCryptoPrecision])
+    return bnOrZero(virtualAssetWithdrawAmountCryptoPrecision)
+      .times(2)
+      .times(1 - runePercentageSelection / 100)
+      .toFixed()
+  }, [runePercentageSelection, virtualAssetWithdrawAmountCryptoPrecision])
 
   const actualRuneWithdrawAmountCryptoPrecision = useMemo(() => {
-    switch (opportunityType) {
-      // Symmetrical: runeAmount = virtual amount (no deposit rebalance, so use current rune value as is)
-      case 'sym':
-        return virtualRuneWithdrawAmountCryptoPrecision
-      // Asym Rune: runeAmount = virtual amount times 2 (deposit 50:50 rebalance rune->asset, so current asset value will be swapped into rune before withdrawal)
-      case AsymSide.Rune:
-        return bnOrZero(virtualRuneWithdrawAmountCryptoPrecision).times(2).toFixed()
-      // Asym Asset: runeAmount = '0' (deposit 50:50 rebalance asset->rune, so current rune value will be swapped into asset before withdrawal)
-      case AsymSide.Asset:
-        return '0'
-      default:
-        assertUnreachable(opportunityType)
-    }
-  }, [opportunityType, virtualRuneWithdrawAmountCryptoPrecision])
+    return bnOrZero(virtualRuneWithdrawAmountCryptoPrecision)
+      .times(2)
+      .times(runePercentageSelection / 100)
+      .toFixed()
+  }, [runePercentageSelection, virtualRuneWithdrawAmountCryptoPrecision])
 
   const actualAssetWithdrawAmountFiatUserCurrency = useMemo(() => {
-    switch (opportunityType) {
-      // Symmetrical: assetAmount = virtual amount (no deposit rebalance, so use current asset value as is)
-      case 'sym':
-        return virtualAssetWithdrawAmountFiatUserCurrency
-      // Asym Asset: assetAmount = virtual amount times 2 (deposit 50:50 rebalance asset->rune, so current rune value will be swapped into asset before withdrawal)
-      case AsymSide.Asset:
-        return bnOrZero(virtualAssetWithdrawAmountFiatUserCurrency).times(2).toFixed()
-      // Asym Rune: assetAmount = '0' (deposit 50:50 rebalance rune -> asset, so current asset value will be swapped into rune before withdrawal)
-      case AsymSide.Rune:
-        return '0'
-      default:
-        assertUnreachable(opportunityType)
-    }
-  }, [opportunityType, virtualAssetWithdrawAmountFiatUserCurrency])
+    return bnOrZero(virtualAssetWithdrawAmountFiatUserCurrency)
+      .times(2)
+      .times(1 - runePercentageSelection / 100)
+      .toFixed()
+  }, [runePercentageSelection, virtualAssetWithdrawAmountFiatUserCurrency])
 
   const actualRuneWithdrawAmountFiatUserCurrency = useMemo(() => {
-    switch (opportunityType) {
-      // Symmetrical: runeAmount = virtual amount (no deposit rebalance, so use current rune value as is)
-      case 'sym':
-        return virtualRuneWithdrawAmountFiatUserCurrency
-      // Asym Rune: runeAmount = virtual amount times 2 (deposit 50:50 rebalance rune->asset, so current asset value will be swapped into rune before withdrawal)
-      case AsymSide.Rune:
-        return bnOrZero(virtualRuneWithdrawAmountFiatUserCurrency).times(2).toFixed()
-      // Asym Asset: runeAmount = '0' (deposit 50:50 rebalance asset->rune, so current rune value will be swapped into asset before withdrawal)
-      case AsymSide.Asset:
-        return '0'
-      default:
-        assertUnreachable(opportunityType)
-    }
-  }, [opportunityType, virtualRuneWithdrawAmountFiatUserCurrency])
+    return bnOrZero(virtualRuneWithdrawAmountFiatUserCurrency)
+      .times(2)
+      .times(runePercentageSelection / 100)
+      .toFixed()
+  }, [runePercentageSelection, virtualRuneWithdrawAmountFiatUserCurrency])
 
   const incompleteSide = useMemo(() => {
     if (!position?.status.incomplete) return
@@ -351,6 +337,20 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
       setPercentageSelection(percentage)
     },
     [setPercentageSelection, setSliderValue],
+  )
+
+  const handleRuneRemovalPercentageChange = useCallback(
+    (percentage: number) => {
+      setRuneRemovalPercentage(percentage)
+    },
+    [setRuneRemovalPercentage],
+  )
+  const handleRuneRemovalPercentageChangeEnd = useCallback(
+    (percentage: number) => {
+      setRuneRemovalPercentage(percentage)
+      setRunePercentageSelection(percentage)
+    },
+    [setRuneRemovalPercentage, setRunePercentageSelection],
   )
 
   useEffect(() => {
@@ -759,22 +759,9 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
   const tradeAssetInputs = useMemo(() => {
     if (!(poolAsset && runeAsset && opportunityType)) return null
 
-    const assets: Asset[] = (() => {
-      switch (opportunityType) {
-        case AsymSide.Rune:
-          return [runeAsset]
-        case AsymSide.Asset:
-          return [poolAsset]
-        case 'sym':
-          return [poolAsset, runeAsset]
-        default:
-          assertUnreachable(opportunityType)
-      }
-    })()
-
     return (
       <Stack divider={pairDivider} spacing={0}>
-        {assets.map(asset => {
+        {[poolAsset, runeAsset].map(asset => {
           const isRune = asset.assetId === runeAsset.assetId
           const marketData = isRune ? runeMarketData : poolAssetMarketData
           const handleRemoveLiquidityInputChange = createHandleRemoveLiquidityInputChange(
@@ -786,21 +773,24 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
               ? virtualRuneWithdrawAmountCryptoPrecision
               : virtualAssetWithdrawAmountCryptoPrecision,
           )
-            .times(opportunityType === 'sym' ? 1 : 2)
+            .times(2)
+            .times(isRune ? runePercentageSelection / 100 : 1 - runePercentageSelection / 100)
             .toFixed()
           const fiatAmount = bnOrZero(
             isRune
               ? virtualRuneWithdrawAmountFiatUserCurrency
               : virtualAssetWithdrawAmountFiatUserCurrency,
           )
-            .times(opportunityType === 'sym' ? 1 : 2)
+            .times(2)
+            .times(isRune ? runePercentageSelection / 100 : 1 - runePercentageSelection / 100)
             .toFixed()
           const cryptoBalance = bnOrZero(
             isRune
               ? position?.underlyingRuneAmountCryptoPrecision
               : position?.underlyingAssetAmountCryptoPrecision,
           )
-            .times(opportunityType === 'sym' ? 1 : 2)
+            .times(2)
+            .times(isRune ? runePercentageSelection / 100 : 1 - runePercentageSelection / 100)
             .toFixed()
 
           const fiatBalance = bnOrZero(
@@ -808,7 +798,8 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
               ? position?.underlyingRuneAmountFiatUserCurrency
               : position?.underlyingAssetAmountFiatUserCurrency,
           )
-            .times(opportunityType === 'sym' ? 1 : 2)
+            .times(2)
+            .times(isRune ? runePercentageSelection / 100 : 1 - runePercentageSelection / 100)
             .toFixed()
 
           return (
@@ -833,6 +824,7 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
       </Stack>
     )
   }, [
+    runePercentageSelection,
     poolAsset,
     runeAsset,
     pairDivider,
@@ -961,6 +953,39 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
     )
   }, [isUnsupportedSymWithdraw, poolAsset, runeAsset, translate])
 
+  const runePercentageSlider = useMemo(() => {
+    if (!poolAsset || !runeAsset) return null
+    return (
+      <Stack px={6} py={4} fontSize='sm'>
+        <Stack flexDirection='row'>
+          <AssetIcon assetId={assetId} size='xs' />
+          {poolAsset?.symbol}
+          <Amount.Percent value={1 - runeRemovalPercentage / 100} fontSize='xs' />
+          <Slider
+            value={runeRemovalPercentage}
+            onChange={handleRuneRemovalPercentageChange}
+            onChangeEnd={handleRuneRemovalPercentageChangeEnd}
+          >
+            <SliderTrack>
+              <SliderFilledTrack bg='blue.500' />
+            </SliderTrack>
+            <SliderThumb />
+          </Slider>
+          <AssetIcon assetId={thorchainAssetId} size='xs' />
+          {runeAsset?.symbol}
+          <Amount.Percent value={runeRemovalPercentage / 100} fontSize='xs' />
+        </Stack>
+      </Stack>
+    )
+  }, [
+    poolAsset,
+    runeAsset,
+    assetId,
+    runeRemovalPercentage,
+    handleRuneRemovalPercentageChange,
+    handleRuneRemovalPercentageChangeEnd,
+  ])
+
   const confirmCopy = useMemo(() => {
     if (errorCopy) return errorCopy
     return translate('pools.removeLiquidity')
@@ -1003,6 +1028,8 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
               </Button>
             </ButtonGroup>
           </Stack>
+          <Divider borderColor='border.base' />
+          {runePercentageSlider}
           <Divider borderColor='border.base' />
           <Stack divider={pairDivider} spacing={0}>
             {tradeAssetInputs}
