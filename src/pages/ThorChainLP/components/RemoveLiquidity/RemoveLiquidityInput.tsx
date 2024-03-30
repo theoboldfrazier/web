@@ -23,7 +23,7 @@ import {
 import type { AccountId } from '@shapeshiftoss/caip'
 import { thorchainAssetId, thorchainChainId, toAccountId } from '@shapeshiftoss/caip'
 import { SwapperName } from '@shapeshiftoss/swapper'
-import type { Asset, MarketData } from '@shapeshiftoss/types'
+import type { MarketData } from '@shapeshiftoss/types'
 import { useQuery } from '@tanstack/react-query'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { BiSolidBoltCircle } from 'react-icons/bi'
@@ -35,7 +35,6 @@ import { useQuoteEstimatedFeesQuery } from 'react-queries/hooks/useQuoteEstimate
 import { selectInboundAddressData } from 'react-queries/selectors'
 import { useHistory } from 'react-router'
 import { Amount } from 'components/Amount/Amount'
-import { AssetIcon } from 'components/AssetIcon'
 import { AssetInput } from 'components/DeFi/components/AssetInput'
 import { SlippagePopover } from 'components/MultiHopTrade/components/SlippagePopover'
 import { Row } from 'components/Row/Row'
@@ -76,6 +75,7 @@ import {
 } from 'state/slices/selectors'
 import { useAppSelector } from 'state/store'
 
+import { RunePercentageSlider } from './components/RunePercentageSlider'
 import { RemoveLiquidityRoutePaths } from './types'
 
 const INITIAL_REMOVAL_PERCENTAGE = 50
@@ -953,39 +953,6 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
     )
   }, [isUnsupportedSymWithdraw, poolAsset, runeAsset, translate])
 
-  const runePercentageSlider = useMemo(() => {
-    if (!poolAsset || !runeAsset) return null
-    return (
-      <Stack px={6} py={4} fontSize='sm'>
-        <Stack flexDirection='row'>
-          <AssetIcon assetId={assetId} size='xs' />
-          {poolAsset?.symbol}
-          <Amount.Percent value={1 - runeRemovalPercentage / 100} fontSize='xs' />
-          <Slider
-            value={runeRemovalPercentage}
-            onChange={handleRuneRemovalPercentageChange}
-            onChangeEnd={handleRuneRemovalPercentageChangeEnd}
-          >
-            <SliderTrack>
-              <SliderFilledTrack bg='blue.500' />
-            </SliderTrack>
-            <SliderThumb />
-          </Slider>
-          <AssetIcon assetId={thorchainAssetId} size='xs' />
-          {runeAsset?.symbol}
-          <Amount.Percent value={runeRemovalPercentage / 100} fontSize='xs' />
-        </Stack>
-      </Stack>
-    )
-  }, [
-    poolAsset,
-    runeAsset,
-    assetId,
-    runeRemovalPercentage,
-    handleRuneRemovalPercentageChange,
-    handleRuneRemovalPercentageChangeEnd,
-  ])
-
   const confirmCopy = useMemo(() => {
     if (errorCopy) return errorCopy
     return translate('pools.removeLiquidity')
@@ -1029,10 +996,15 @@ export const RemoveLiquidityInput: React.FC<RemoveLiquidityInputProps> = ({
             </ButtonGroup>
           </Stack>
           <Divider borderColor='border.base' />
-          {runePercentageSlider}
-          <Divider borderColor='border.base' />
           <Stack divider={pairDivider} spacing={0}>
             {tradeAssetInputs}
+            <RunePercentageSlider
+              poolAsset={poolAsset}
+              runeAsset={runeAsset}
+              runeRemovalPercentage={runeRemovalPercentage}
+              handleRuneRemovalPercentageChange={handleRuneRemovalPercentageChange}
+              handleRuneRemovalPercentageChangeEnd={handleRuneRemovalPercentageChangeEnd}
+            />
           </Stack>
         </Stack>
       </Stack>
