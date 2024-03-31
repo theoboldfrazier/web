@@ -39,7 +39,7 @@ const RunePercentageSlider: React.FC<RunePercentSliderProps> = ({
   if (!poolAsset || !runeAsset) return null
 
   return (
-    <Stack px={6} py={4} fontSize='sm' flexDirection='row'>
+    <Stack px={3} py={4} fontSize='sm' flexDirection='row'>
       <Stack flexDirection='column' align='center'>
         <Stack flexDirection='row'>
           <AssetIcon assetId={poolAsset.assetId} size='xs' />
